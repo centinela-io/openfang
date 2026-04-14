@@ -1,0 +1,59 @@
+# OpenFang Agent OS — Railway deployment config
+# Variables are substituted at runtime via envsubst
+
+api_listen = "0.0.0.0:${PORT}"
+log_level = "info"
+home_dir = "/data"
+data_dir = "/data"
+
+# ── LLM Provider ──
+[default_model]
+provider = "gemini"
+model = "gemini-2.5-flash"
+api_key_env = "GEMINI_API_KEY"
+
+[[fallback_providers]]
+provider = "anthropic"
+model = "claude-sonnet-4-20250514"
+api_key_env = "ANTHROPIC_API_KEY"
+
+[[fallback_providers]]
+provider = "groq"
+model = "llama-3.3-70b-versatile"
+api_key_env = "GROQ_API_KEY"
+
+# ── Matrix: connect to Synapse via Railway internal network ──
+[channels.matrix]
+homeserver_url = "${MATRIX_HOMESERVER_URL}"
+user_id = "@openfang:${SYNAPSE_SERVER_NAME}"
+access_token_env = "MATRIX_ACCESS_TOKEN"
+auto_accept_invites = true
+allowed_rooms = []
+
+# ── Agent routing ──
+# Default: all Matrix messages go to the router agent.
+# When a WhatsApp contact writes, mautrix-whatsapp creates a Matrix room.
+# The router agent handles all rooms; add specific bindings below to
+# route specific rooms to dedicated agents.
+
+[[bindings]]
+agent = "assistant"
+[bindings.match_rule]
+channel = "matrix"
+
+# ── Per-tenant bindings (uncomment and customize) ──
+# [[bindings]]
+# agent = "soporte-cliente-a"
+# [bindings.match_rule]
+# channel = "matrix"
+# peer_id = "!roomIdClienteA:${SYNAPSE_SERVER_NAME}"
+#
+# [[bindings]]
+# agent = "ventas-cliente-b"
+# [bindings.match_rule]
+# channel = "matrix"
+# peer_id = "!roomIdClienteB:${SYNAPSE_SERVER_NAME}"
+
+# ── Web search (optional) ──
+[web]
+search_provider = "auto"
