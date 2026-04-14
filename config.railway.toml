@@ -2,6 +2,7 @@
 # Variables are substituted at runtime via envsubst
 
 api_listen = "0.0.0.0:${PORT}"
+api_key = "${OPENFANG_API_KEY}"
 log_level = "info"
 home_dir = "/data"
 data_dir = "/data"
