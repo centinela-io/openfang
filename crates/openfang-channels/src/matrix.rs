@@ -53,7 +53,11 @@ impl MatrixAdapter {
             homeserver_url,
             user_id,
             access_token: Zeroizing::new(access_token),
-            client: reqwest::Client::new(),
+            client: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(90))
+                .connect_timeout(std::time::Duration::from_secs(30))
+                .build()
+                .unwrap_or_else(|_| reqwest::Client::new()),
             allowed_rooms,
             shutdown_tx: Arc::new(shutdown_tx),
             shutdown_rx,

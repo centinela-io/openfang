@@ -79,3 +79,4 @@ shell = ["python *", "cargo *", "git *", "npm *"]
 
 [autonomous]
 max_iterations = 100
+heartbeat_interval_secs = 300
