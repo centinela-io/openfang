@@ -1,0 +1,61 @@
+# syntax=docker/dockerfile:1
+# Optimized for Railway: separate dependency fetch from source build
+# so cargo deps are cached between deploys
+
+FROM rust:1-slim-bookworm AS builder
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y pkg-config libssl-dev perl make && rm -rf /var/lib/apt/lists/*
+
+# Step 1: Cache dependencies (only re-runs when Cargo.toml/lock change)
+COPY Cargo.toml Cargo.lock ./
+COPY crates/openfang-types/Cargo.toml crates/openfang-types/
+COPY crates/openfang-channels/Cargo.toml crates/openfang-channels/
+COPY crates/openfang-runtime/Cargo.toml crates/openfang-runtime/
+COPY crates/openfang-kernel/Cargo.toml crates/openfang-kernel/
+COPY crates/openfang-api/Cargo.toml crates/openfang-api/
+COPY crates/openfang-cli/Cargo.toml crates/openfang-cli/
+COPY crates/openfang-skills/Cargo.toml crates/openfang-skills/
+COPY crates/openfang-hands/Cargo.toml crates/openfang-hands/
+RUN mkdir -p crates/openfang-types/src && echo "" > crates/openfang-types/src/lib.rs && \
+    mkdir -p crates/openfang-channels/src && echo "" > crates/openfang-channels/src/lib.rs && \
+    mkdir -p crates/openfang-runtime/src && echo "" > crates/openfang-runtime/src/lib.rs && \
+    mkdir -p crates/openfang-kernel/src && echo "" > crates/openfang-kernel/src/lib.rs && \
+    mkdir -p crates/openfang-api/src && echo "" > crates/openfang-api/src/lib.rs && \
+    mkdir -p crates/openfang-cli/src && echo "fn main(){}" > crates/openfang-cli/src/main.rs && \
+    mkdir -p crates/openfang-skills/src && echo "" > crates/openfang-skills/src/lib.rs && \
+    mkdir -p crates/openfang-hands/src && echo "" > crates/openfang-hands/src/lib.rs && \
+    mkdir -p xtask/src && echo "fn main(){}" > xtask/src/main.rs && \
+    mkdir -p packages
+COPY xtask/Cargo.toml xtask/
+
+# Faster release builds for dev/staging (disable LTO, more codegen units)
+ARG LTO=false
+ARG CODEGEN_UNITS=16
+ENV CARGO_PROFILE_RELEASE_LTO=${LTO} \
+    CARGO_PROFILE_RELEASE_CODEGEN_UNITS=${CODEGEN_UNITS}
+
+RUN cargo build --release --bin openfang 2>/dev/null || true
+
+# Step 2: Build actual source (fast - deps already compiled)
+COPY crates ./crates
+COPY xtask ./xtask
+COPY agents ./agents
+COPY packages ./packages
+RUN cargo build --release --bin openfang
+
+# Runtime
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates python3 nodejs npm gettext-base \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /build/target/release/openfang /usr/local/bin/
+COPY --from=builder /build/agents /opt/openfang/agents
+COPY config.railway.toml /opt/openfang/config.railway.toml
+COPY start-railway.sh /opt/openfang/start-railway.sh
+RUN chmod +x /opt/openfang/start-railway.sh
+
+EXPOSE 4200
+ENV OPENFANG_HOME=/data
+ENTRYPOINT ["/opt/openfang/start-railway.sh"]
