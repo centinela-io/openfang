@@ -33,23 +33,15 @@ allowed_rooms = []
 group_policy = "mention_only"
 
 # ── Agent routing ──
-# Default: all Matrix messages go to the router agent.
-# When a WhatsApp contact writes, mautrix-whatsapp creates a Matrix room.
-# The router agent handles all rooms; add specific bindings below to
-# route specific rooms to dedicated agents.
+# Default binding — all unmatched Matrix messages go to assistant.
+# Per-room bindings are loaded from /data/bindings.toml on the volume.
+# Edit bindings.toml and restart (or call POST /api/channels/reload)
+# to change routing WITHOUT rebuilding the Docker image.
 
 [[bindings]]
 agent = "assistant"
 [bindings.match_rule]
 channel = "matrix"
-
-# ── Per-tenant bindings ──
-# Sales agent for WhatsApp DataDevs group
-[[bindings]]
-agent = "sales-assistant"
-[bindings.match_rule]
-channel = "matrix"
-peer_id = "!ftOKxftVCeJIdSJEPH:matrix.centinela.io"
 
 # ── Web search (optional) ──
 [web]

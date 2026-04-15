@@ -1,0 +1,17 @@
+# Dynamic agent bindings — edit this file on the Railway volume at /data/bindings.toml
+# Changes take effect on restart or POST /api/channels/reload
+# No Docker rebuild needed!
+
+# Sales agent for WhatsApp DataDevs group
+[[bindings]]
+agent = "sales-assistant"
+[bindings.match_rule]
+channel = "matrix"
+peer_id = "!ftOKxftVCeJIdSJEPH:matrix.centinela.io"
+
+# Add more room bindings below:
+# [[bindings]]
+# agent = "support-agent"
+# [bindings.match_rule]
+# channel = "matrix"
+# peer_id = "!roomId:matrix.centinela.io"

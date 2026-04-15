@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /build/target/release/openfang /usr/local/bin/
 COPY --from=builder /build/agents /opt/openfang/agents
 COPY config.railway.toml /opt/openfang/config.railway.toml
+COPY bindings.default.toml /opt/openfang/bindings.default.toml
 COPY start-railway.sh /opt/openfang/start-railway.sh
 RUN chmod +x /opt/openfang/start-railway.sh
 
