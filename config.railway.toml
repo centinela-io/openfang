@@ -49,7 +49,7 @@ channel = "matrix"
 agent = "sales-assistant"
 [bindings.match_rule]
 channel = "matrix"
-peer_id = "!soJzEhyuXXudaORQfa:matrix.centinela.io"
+peer_id = "!ftOKxftVCeJIdSJEPH:matrix.centinela.io"
 
 # ── Web search (optional) ──
 [web]
