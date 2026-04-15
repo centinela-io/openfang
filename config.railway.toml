@@ -43,18 +43,13 @@ agent = "assistant"
 [bindings.match_rule]
 channel = "matrix"
 
-# ── Per-tenant bindings (uncomment and customize) ──
-# [[bindings]]
-# agent = "soporte-cliente-a"
-# [bindings.match_rule]
-# channel = "matrix"
-# peer_id = "!roomIdClienteA:${SYNAPSE_SERVER_NAME}"
-#
-# [[bindings]]
-# agent = "ventas-cliente-b"
-# [bindings.match_rule]
-# channel = "matrix"
-# peer_id = "!roomIdClienteB:${SYNAPSE_SERVER_NAME}"
+# ── Per-tenant bindings ──
+# Sales agent for WhatsApp DataDevs group
+[[bindings]]
+agent = "sales-assistant"
+[bindings.match_rule]
+channel = "matrix"
+peer_id = "!soJzEhyuXXudaORQfa:matrix.centinela.io"
 
 # ── Web search (optional) ──
 [web]
