@@ -244,13 +244,29 @@ impl ChannelAdapter for MatrixAdapter {
 
         tokio::spawn(async move {
             let mut backoff = Duration::from_secs(1);
+            let mut sync_iteration: u64 = 0;
             // Track recently seen event IDs to prevent duplicate processing
             // on sync token races or reconnects.
             let mut seen_events: std::collections::HashSet<String> =
                 std::collections::HashSet::new();
             const MAX_SEEN: usize = 500;
 
+            info!("Matrix sync loop started");
+
             loop {
+                sync_iteration += 1;
+
+                // Log every 10th iteration to confirm loop is alive
+                if sync_iteration % 10 == 1 {
+                    info!("Matrix sync loop alive, iteration={sync_iteration}");
+                }
+
+                // Check if shutdown was already signaled before entering select
+                if *shutdown_rx.borrow() {
+                    info!("Matrix sync loop: shutdown already signaled, exiting");
+                    break;
+                }
+
                 // Build /sync URL
                 let since = since_token.read().await.clone();
                 let mut url = format!(
@@ -261,16 +277,25 @@ impl ChannelAdapter for MatrixAdapter {
                     url.push_str(&format!("&since={token}"));
                 }
 
+                debug!("Matrix sync request iter={sync_iteration} has_since={}", since.is_some());
+
                 let resp = tokio::select! {
-                    _ = shutdown_rx.changed() => {
-                        info!("Matrix adapter shutting down");
+                    result = shutdown_rx.changed() => {
+                        match result {
+                            Ok(()) => {
+                                info!("Matrix sync loop: shutdown signal received, exiting");
+                            }
+                            Err(e) => {
+                                warn!("Matrix sync loop: shutdown channel error (sender dropped): {e}");
+                            }
+                        }
                         break;
                     }
                     result = client.get(&url).bearer_auth(access_token.as_str()).send() => {
                         match result {
                             Ok(r) => r,
                             Err(e) => {
-                                warn!("Matrix sync error: {e}");
+                                warn!("Matrix sync error (iter={sync_iteration}): {e}");
                                 tokio::time::sleep(backoff).await;
                                 backoff = (backoff * 2).min(Duration::from_secs(60));
                                 continue;
@@ -280,7 +305,7 @@ impl ChannelAdapter for MatrixAdapter {
                 };
 
                 if !resp.status().is_success() {
-                    warn!("Matrix sync returned {}", resp.status());
+                    warn!("Matrix sync returned {} (iter={sync_iteration})", resp.status());
                     tokio::time::sleep(backoff).await;
                     backoff = (backoff * 2).min(Duration::from_secs(60));
                     continue;
@@ -291,7 +316,7 @@ impl ChannelAdapter for MatrixAdapter {
                 let body: serde_json::Value = match resp.json().await {
                     Ok(b) => b,
                     Err(e) => {
-                        warn!("Matrix sync parse error: {e}");
+                        warn!("Matrix sync parse error (iter={sync_iteration}): {e}");
                         continue;
                     }
                 };
@@ -448,7 +473,9 @@ impl ChannelAdapter for MatrixAdapter {
                                     metadata,
                                 };
 
+                                info!("Matrix: dispatching message from {sender} in {room_id} (iter={sync_iteration})");
                                 if tx.send(channel_msg).await.is_err() {
+                                    warn!("Matrix sync loop: tx.send failed (receiver dropped), exiting (iter={sync_iteration})");
                                     return;
                                 }
                             }
@@ -456,6 +483,8 @@ impl ChannelAdapter for MatrixAdapter {
                     }
                 }
             }
+
+            info!("Matrix sync loop exited (iter={sync_iteration})");
         });
 
         Ok(Box::pin(tokio_stream::wrappers::ReceiverStream::new(rx)))

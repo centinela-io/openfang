@@ -416,11 +416,18 @@ impl BridgeManager {
 
         let task = tokio::spawn(async move {
             let mut stream = std::pin::pin!(stream);
+            let mut bridge_iter: u64 = 0;
+            info!("Bridge adapter loop started for {}", adapter_clone.name());
             loop {
+                bridge_iter += 1;
+                if bridge_iter % 100 == 1 {
+                    info!("Bridge adapter {} loop alive, iter={bridge_iter}", adapter_clone.name());
+                }
                 tokio::select! {
                     msg = stream.next() => {
                         match msg {
                             Some(message) => {
+                                info!("Bridge: received message from {} on {}", message.sender.display_name, adapter_clone.name());
                                 // Spawn each dispatch as a concurrent task so the stream
                                 // loop is never blocked by slow LLM calls. The kernel's
                                 // per-agent lock ensures session integrity.
@@ -451,10 +458,19 @@ impl BridgeManager {
                             }
                         }
                     }
-                    _ = shutdown.changed() => {
-                        if *shutdown.borrow() {
-                            info!("Shutting down channel adapter {}", adapter_clone.name());
-                            break;
+                    result = shutdown.changed() => {
+                        match result {
+                            Ok(()) => {
+                                if *shutdown.borrow() {
+                                    info!("Shutting down channel adapter {} (shutdown=true)", adapter_clone.name());
+                                    break;
+                                }
+                                info!("Bridge: shutdown.changed() fired but value is false for {}, continuing", adapter_clone.name());
+                            }
+                            Err(e) => {
+                                warn!("Bridge: shutdown channel error for {} (sender dropped): {e}", adapter_clone.name());
+                                break;
+                            }
                         }
                     }
                 }
