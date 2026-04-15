@@ -30,6 +30,7 @@ user_id = "@openfang:${SYNAPSE_SERVER_NAME}"
 access_token_env = "MATRIX_ACCESS_TOKEN"
 auto_accept_invites = true
 allowed_rooms = []
+group_policy = "all"
 
 # ── Agent routing ──
 # Default: all Matrix messages go to the router agent.
