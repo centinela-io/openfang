@@ -399,9 +399,18 @@ impl ChannelAdapter for MatrixAdapter {
                                     ChannelContent::Text(content.to_string())
                                 };
 
-                                // Detect @mentions: check body, formatted_body, and m.mentions
+                                // Detect @mentions: check body, formatted_body, m.mentions,
+                                // AND a plain @localpart match so WhatsApp users can write
+                                // "@openfang ..." without typing the full MXID.
+                                let localpart_mention = user_id
+                                    .strip_prefix('@')
+                                    .and_then(|s| s.split(':').next())
+                                    .map(|lp| format!("@{lp}"))
+                                    .unwrap_or_default();
                                 let mut metadata = HashMap::new();
-                                let mentioned_in_body = content.contains(&user_id);
+                                let mentioned_in_body = content.contains(&user_id)
+                                    || (!localpart_mention.is_empty()
+                                        && content.to_lowercase().contains(&localpart_mention.to_lowercase()));
                                 let mentioned_in_html = event["content"]["formatted_body"]
                                     .as_str()
                                     .map(|html| html.contains(&user_id))

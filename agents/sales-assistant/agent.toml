@@ -80,6 +80,3 @@ memory_read = ["self.*", "shared.*"]
 memory_write = ["self.*", "shared.leads.*"]
 agent_message = ["assistant"]
 
-[autonomous]
-max_iterations = 50
-heartbeat_interval_secs = 300

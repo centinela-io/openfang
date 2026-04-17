@@ -1,17 +1,27 @@
 # Dynamic agent bindings — edit this file on the Railway volume at /data/bindings.toml
 # Changes take effect on restart or POST /api/channels/reload
 # No Docker rebuild needed!
+#
+# How activation works in groups:
+#   - group_policy = "mention_only" (config.railway.toml)
+#   - User must mention the bot. Detected sources (matrix.rs):
+#       1. Plain body containing the bot MXID (@openfang:matrix.centinela.io)
+#       2. Plain body containing the bot localpart (@openfang)  ← WhatsApp UX
+#       3. HTML formatted_body containing the MXID (Element pills)
+#       4. m.mentions.user_ids[] containing the MXID (Matrix spec)
+#   - DMs (1:1) auto-pass — no @ required.
+#
+# Default routing: any Matrix room with no explicit binding goes to the
+# "assistant" agent (declared in config.railway.toml). The block below
+# overrides routing for specific rooms only.
 
-# Sales agent for WhatsApp DataDevs group
+# Demo Sales — dedicated sales agent for sales demos / lead-gen tests
 [[bindings]]
 agent = "sales-assistant"
 [bindings.match_rule]
 channel = "matrix"
 peer_id = "!ftOKxftVCeJIdSJEPH:matrix.centinela.io"
 
-# Add more room bindings below:
-# [[bindings]]
-# agent = "support-agent"
-# [bindings.match_rule]
-# channel = "matrix"
-# peer_id = "!roomId:matrix.centinela.io"
+# Test channel for general assistant: Data Devs WhatsApp portal
+# (https://chat.whatsapp.com/HSxtgYnq0XlLJP1qhyXV9P → !HdemcauqipyZqYhGqw)
+# Falls through to default "assistant" — no entry needed here.
