@@ -39,7 +39,7 @@ group_policy = "mention_only"
 # to change routing WITHOUT rebuilding the Docker image.
 
 [[bindings]]
-agent = "assistant"
+agent = "General Assistant"
 [bindings.match_rule]
 channel = "matrix"
 

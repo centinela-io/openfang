@@ -80,3 +80,12 @@ memory_read = ["self.*", "shared.*"]
 memory_write = ["self.*", "shared.leads.*"]
 agent_message = ["assistant"]
 
+# heartbeat_interval_secs = 86400 (24h) → kernel timeout = 48h.
+# This agent is reactive (no background loop). The high value disables
+# the heartbeat-based crash detection that otherwise marks idle agents
+# as Crashed every 600s and floods logs (kernel default_timeout_secs=180,
+# UNRESPONSIVE_MULTIPLIER=2). max_iterations=50 caps any single dispatch.
+[autonomous]
+max_iterations = 50
+heartbeat_interval_secs = 86400
+
