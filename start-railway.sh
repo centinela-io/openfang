@@ -6,19 +6,27 @@ mkdir -p /data
 # Substitute environment variables in config template
 envsubst < /opt/openfang/config.railway.toml > /data/config.base.toml
 
-# Seed default bindings on first run
-if [ ! -f /data/bindings.toml ] && [ -f /opt/openfang/bindings.default.toml ]; then
+# Bindings: the repo is source of truth. On every start we overwrite
+# /data/bindings.toml from bindings.default.toml so a redeploy always
+# matches the committed state. To change routing live without redeploy,
+# edit /data/bindings.local.toml on the volume — it is appended after
+# bindings.default.toml and overrides matching peer_id rules.
+if [ -f /opt/openfang/bindings.default.toml ]; then
   cp /opt/openfang/bindings.default.toml /data/bindings.toml
-  echo "Seeded default bindings to /data/bindings.toml"
+  echo "Synced /data/bindings.toml from repo (bindings.default.toml)"
 fi
 
-# If a custom bindings override exists on the volume, append it
-# This allows changing bindings without rebuilding
+if [ -f /data/bindings.local.toml ]; then
+  echo "" >> /data/bindings.toml
+  echo "# ── Local overrides (/data/bindings.local.toml) ──" >> /data/bindings.toml
+  cat /data/bindings.local.toml >> /data/bindings.toml
+  echo "Appended local overrides from /data/bindings.local.toml"
+fi
+
 if [ -f /data/bindings.toml ]; then
   echo "" >> /data/config.base.toml
   echo "# ── Dynamic bindings (from /data/bindings.toml) ──" >> /data/config.base.toml
   cat /data/bindings.toml >> /data/config.base.toml
-  echo "Using custom bindings from /data/bindings.toml"
 fi
 
 cp /data/config.base.toml /data/config.toml
