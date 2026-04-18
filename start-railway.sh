@@ -6,6 +6,17 @@ mkdir -p /data
 # Substitute environment variables in config template
 envsubst < /opt/openfang/config.railway.toml > /data/config.base.toml
 
+# Optional hot-reload overlay: append /data/config.local.toml if present.
+# Useful for editing room_triggers, group_policy, allowed_rooms, etc. on the
+# volume without a rebuild. A restart is still required — the OpenFang kernel
+# only reads the config file on startup.
+if [ -f /data/config.local.toml ]; then
+  echo "" >> /data/config.base.toml
+  echo "# ── Local overrides (/data/config.local.toml) ──" >> /data/config.base.toml
+  cat /data/config.local.toml >> /data/config.base.toml
+  echo "Appended /data/config.local.toml to config.base.toml"
+fi
+
 # Bindings: the repo is source of truth. On every start we overwrite
 # /data/bindings.toml from bindings.default.toml so a redeploy always
 # matches the committed state. To change routing live without redeploy,

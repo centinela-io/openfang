@@ -32,6 +32,22 @@ auto_accept_invites = true
 allowed_rooms = []
 group_policy = "mention_only"
 
+# ── Per-room extra mention keywords ──
+# When any keyword below appears in a message's plain body (case-insensitive)
+# the bot treats it like a mention — even if no Matrix m.mentions is present.
+# Useful for WhatsApp UX: mautrix-whatsapp forwards group @mentions as raw
+# text (e.g. the group's JID) without producing a Matrix mention event, so
+# the bot would otherwise never activate on @CTL / @centinela / etc.
+#
+# To add/change keywords without rebuilding, drop equivalent blocks into
+# /data/config.local.toml on the Railway volume and restart the service.
+
+# Data Devs (https://chat.whatsapp.com/HSxtgYnq0XlLJP1qhyXV9P)
+# "@CTL" from WhatsApp resolves to the CTL group JID, forwarded as plain text.
+[[channels.matrix.room_triggers]]
+room_id = "!HdemcauqipyZqYhGqw:matrix.centinela.io"
+keywords = ["@ctl", "@120363425422565445@g.us"]
+
 # ── Agent routing ──
 # Default binding — all unmatched Matrix messages go to assistant.
 # Per-room bindings are loaded from /data/bindings.toml on the volume.

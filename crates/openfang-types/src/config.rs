@@ -1929,6 +1929,21 @@ impl Default for SignalConfig {
     }
 }
 
+/// Per-room mention keywords. When any keyword is present in the Matrix
+/// message body (case-insensitive), `was_mentioned` is set — same as a
+/// real MXID mention. Lets WhatsApp users activate the bot by writing
+/// custom tokens (e.g. "@ctl" or a WhatsApp group JID) that mautrix-whatsapp
+/// forwards as plain text.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct RoomTrigger {
+    /// Matrix room ID (e.g. "!abc:matrix.example.org").
+    pub room_id: String,
+    /// Case-insensitive substrings in the message body that count as a mention.
+    #[serde(default, deserialize_with = "deserialize_string_or_int_vec")]
+    pub keywords: Vec<String>,
+}
+
 /// Matrix protocol channel adapter configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -1947,6 +1962,9 @@ pub struct MatrixConfig {
     /// Whether to auto-accept room invites (default: false).
     #[serde(default)]
     pub auto_accept_invites: bool,
+    /// Per-room extra mention keywords. See [`RoomTrigger`].
+    #[serde(default)]
+    pub room_triggers: Vec<RoomTrigger>,
     /// Per-channel behavior overrides.
     #[serde(default)]
     pub overrides: ChannelOverrides,
@@ -1961,6 +1979,7 @@ impl Default for MatrixConfig {
             allowed_rooms: vec![],
             default_agent: None,
             auto_accept_invites: false,
+            room_triggers: vec![],
             overrides: ChannelOverrides::default(),
         }
     }

@@ -1230,13 +1230,28 @@ pub async fn start_channel_bridge_with_config(
     // Matrix
     if let Some(ref mx_config) = config.matrix {
         if let Some(token) = read_token(&mx_config.access_token_env, "Matrix") {
-            let adapter = Arc::new(MatrixAdapter::new(
-                mx_config.homeserver_url.clone(),
-                mx_config.user_id.clone(),
-                token,
-                mx_config.allowed_rooms.clone(),
-                mx_config.auto_accept_invites,
-            ));
+            let trigger_pairs: Vec<(String, Vec<String>)> = mx_config
+                .room_triggers
+                .iter()
+                .filter(|t| !t.room_id.is_empty() && !t.keywords.is_empty())
+                .map(|t| (t.room_id.clone(), t.keywords.clone()))
+                .collect();
+            if !trigger_pairs.is_empty() {
+                info!(
+                    "Matrix: loaded room_triggers for {} room(s)",
+                    trigger_pairs.len()
+                );
+            }
+            let adapter = Arc::new(
+                MatrixAdapter::new(
+                    mx_config.homeserver_url.clone(),
+                    mx_config.user_id.clone(),
+                    token,
+                    mx_config.allowed_rooms.clone(),
+                    mx_config.auto_accept_invites,
+                )
+                .with_room_triggers(trigger_pairs),
+            );
             adapters.push((adapter, mx_config.default_agent.clone()));
         }
     }

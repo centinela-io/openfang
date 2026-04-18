@@ -37,6 +37,8 @@ pub struct MatrixAdapter {
     since_token: Arc<RwLock<Option<String>>>,
     /// Whether to auto-accept room invites.
     auto_accept_invites: bool,
+    /// Per-room extra mention keywords (room_id → keywords).
+    room_triggers: std::collections::HashMap<String, Vec<String>>,
 }
 
 impl MatrixAdapter {
@@ -63,7 +65,18 @@ impl MatrixAdapter {
             shutdown_rx,
             since_token: Arc::new(RwLock::new(None)),
             auto_accept_invites,
+            room_triggers: std::collections::HashMap::new(),
         }
+    }
+
+    /// Configure per-room extra mention keywords. Keywords are matched
+    /// case-insensitively against the plain `body` of incoming messages.
+    pub fn with_room_triggers(
+        mut self,
+        triggers: impl IntoIterator<Item = (String, Vec<String>)>,
+    ) -> Self {
+        self.room_triggers = triggers.into_iter().collect();
+        self
     }
 
     /// Send a text message to a Matrix room.
@@ -229,6 +242,7 @@ impl ChannelAdapter for MatrixAdapter {
         // process its own replies in an infinite loop (see #757).
         let user_id = validated_user;
         let allowed_rooms = self.allowed_rooms.clone();
+        let room_triggers = self.room_triggers.clone();
         let client = self.client.clone();
         let since_token = Arc::clone(&self.since_token);
         let mut shutdown_rx = self.shutdown_rx.clone();
@@ -408,9 +422,10 @@ impl ChannelAdapter for MatrixAdapter {
                                     .map(|lp| format!("@{lp}"))
                                     .unwrap_or_default();
                                 let mut metadata = HashMap::new();
+                                let content_lower = content.to_lowercase();
                                 let mentioned_in_body = content.contains(&user_id)
                                     || (!localpart_mention.is_empty()
-                                        && content.to_lowercase().contains(&localpart_mention.to_lowercase()));
+                                        && content_lower.contains(&localpart_mention.to_lowercase()));
                                 let mentioned_in_html = event["content"]["formatted_body"]
                                     .as_str()
                                     .map(|html| html.contains(&user_id))
@@ -419,7 +434,21 @@ impl ChannelAdapter for MatrixAdapter {
                                     .as_array()
                                     .map(|ids| ids.iter().any(|id| id.as_str() == Some(&user_id)))
                                     .unwrap_or(false);
-                                if mentioned_in_body || mentioned_in_html || mentioned_in_m_mentions {
+                                // Per-room extra keywords (WhatsApp UX: @ctl, group JIDs, etc.)
+                                let mentioned_in_room_trigger = room_triggers
+                                    .get(room_id)
+                                    .map(|kws| {
+                                        kws.iter().any(|kw| {
+                                            !kw.is_empty()
+                                                && content_lower.contains(&kw.to_lowercase())
+                                        })
+                                    })
+                                    .unwrap_or(false);
+                                if mentioned_in_body
+                                    || mentioned_in_html
+                                    || mentioned_in_m_mentions
+                                    || mentioned_in_room_trigger
+                                {
                                     metadata.insert(
                                         "was_mentioned".to_string(),
                                         serde_json::json!(true),
